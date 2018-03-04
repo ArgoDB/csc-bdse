@@ -1,9 +1,7 @@
 package ru.csc.bdse.kv;
 
-import org.assertj.core.api.exception.RuntimeIOException;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
 import ru.csc.bdse.storage.FileBasedStorage;
