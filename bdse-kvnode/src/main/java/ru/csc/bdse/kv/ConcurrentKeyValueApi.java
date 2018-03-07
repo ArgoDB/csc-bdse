@@ -10,7 +10,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 
-public class ConcurrentKeyValueApi implements KeyValueApi {
+public class ConcurrentKeyValueApi implements KeyValueApiEx {
     private final String name;
     private final ReadWriteLock lock = new ReentrantReadWriteLock(false);
     private final Storage storage;
@@ -29,6 +29,11 @@ public class ConcurrentKeyValueApi implements KeyValueApi {
     @Override
     public Optional<byte[]> get(String key) {
         return Optional.ofNullable(withReadLock(() -> storage.get(key)));
+    }
+
+    @Override
+    public Optional<byte[]> get(@NotNull String key, boolean includingDeleted) {
+        return Optional.ofNullable(withReadLock(() -> storage.get(key, includingDeleted)));
     }
 
     @Override

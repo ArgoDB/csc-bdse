@@ -20,7 +20,7 @@ public abstract class AbstractKeyValueApiTest {
 
     protected abstract KeyValueApi newKeyValueApi();
 
-    private KeyValueApi api;
+    protected KeyValueApi api;
 
     @Before
     public void setUp() throws Exception {

@@ -21,6 +21,7 @@ public class FileBasedStorage implements Storage {
         this.dataFile = data;
     }
 
+    @NotNull
     public static Storage createOrOpen(@NotNull Path directory) throws IOException {
         Storage existed = tryOpenExisted(directory);
         if (existed != null) {
@@ -48,23 +49,28 @@ public class FileBasedStorage implements Storage {
     @Nullable
     @Override
     public byte[] get(@NotNull String key) {
+        return get(key, false);
+    }
+
+    @Nullable
+    @Override
+    public byte[] get(@NotNull String key, boolean includingDeleted) {
         IndexFileRecord record = getIndexRecord(key);
-        if (record == null || record.isDeleted) {
+        if (record == null || (!includingDeleted && record.isDeleted)) {
             return null;
         }
 
         return readData(record.dataOffset);
     }
 
-    @Nullable
     @Override
-    public byte[] get(@NotNull String key, int version, boolean includeDeleted) {
+    public byte[] get(@NotNull String key, int version) {
         if (version < 1) {
             throw new IllegalArgumentException("Version must be positive integer");
         }
 
         IndexFileRecord record = getIndexRecord(key);
-        if (record == null || (!includeDeleted && record.isDeleted)) {
+        if (record == null) {
             return null;
         }
 

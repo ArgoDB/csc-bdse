@@ -12,7 +12,9 @@ public interface Storage {
     byte[] get(@NotNull String key);
 
     @Nullable
-    byte[] get(@NotNull String key, int version, boolean includeDeleted);
+    byte[] get(@NotNull String key, boolean includingDeleted);
+
+    byte[] get(@NotNull String key, int version);
 
     @NotNull
     Set<String> matchByPrefix(@NotNull String prefix, boolean includingDeleted);

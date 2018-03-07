@@ -1,14 +1,14 @@
 package ru.csc.bdse.kv;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import ru.csc.bdse.storage.FileBasedStorage;
+import ru.csc.bdse.util.Random;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.util.Optional;
 
 public class FileBasedStorageTest extends AbstractKeyValueApiTest {
     @Rule
@@ -36,5 +36,26 @@ public class FileBasedStorageTest extends AbstractKeyValueApiTest {
             System.err.println("Something went wrong: " + e);
             throw new UncheckedIOException("Cannot initialize/open database", e);
         }
+    }
+
+    @Test
+    public void deleteByTombstone() {
+        Assert.assertTrue(api instanceof KeyValueApiEx);
+        KeyValueApiEx apiEx = (KeyValueApiEx) api;
+        String key = Random.nextKey();
+        byte[] value = Random.nextValue();
+        apiEx.put(key, value);
+        Optional<byte[]> bytes = apiEx.get(key);
+
+        Assert.assertTrue(bytes.isPresent());
+        Assert.assertArrayEquals(value, bytes.get());
+
+        apiEx.delete(key);
+
+        Assert.assertFalse(apiEx.get(key).isPresent());
+
+        bytes = apiEx.get(key, true);
+        Assert.assertTrue(bytes.isPresent());
+        Assert.assertArrayEquals(value, bytes.get());
     }
 }
