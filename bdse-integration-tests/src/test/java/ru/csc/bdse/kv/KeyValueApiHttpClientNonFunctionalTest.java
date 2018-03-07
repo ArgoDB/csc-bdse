@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 import static java.time.temporal.ChronoUnit.SECONDS;
 
@@ -24,9 +25,14 @@ import static java.time.temporal.ChronoUnit.SECONDS;
 public class KeyValueApiHttpClientNonFunctionalTest {
 
     private static final String ZERO_NODE_NAME = "node-0";
+    private static final int CONCURRENT_THREADS = 30;
 
     @ClassRule
-    public static final GenericContainer node = new GenericContainer(new ImageFromDockerfile().withFileFromFile("target/bdse-kvnode-0.0.1-SNAPSHOT.jar", new File("../bdse-kvnode/target/bdse-kvnode-0.0.1-SNAPSHOT.jar")).withFileFromClasspath("Dockerfile", "kvnode/Dockerfile")).withEnv(Env.KVNODE_NAME, ZERO_NODE_NAME)
+    public static final GenericContainer node = new GenericContainer(new ImageFromDockerfile()
+            .withFileFromFile("target/bdse-kvnode-0.0.1-SNAPSHOT.jar",
+                    new File("../bdse-kvnode/target/bdse-kvnode-0.0.1-SNAPSHOT.jar"))
+            .withFileFromClasspath("Dockerfile", "kvnode/Dockerfile"))
+            .withEnv(Env.KVNODE_NAME, ZERO_NODE_NAME)
             .withExposedPorts(8080)
             .withStartupTimeout(Duration.of(30, SECONDS));
 
@@ -38,14 +44,38 @@ public class KeyValueApiHttpClientNonFunctionalTest {
     }
 
     @Test
-    public void concurrentPuts() {
-        // TODO simultanious puts for the same key value
+    public void concurrentPuts() throws InterruptedException {
+        String key = Random.nextKey();
+        Thread[] threads = IntStream.range(0, CONCURRENT_THREADS)
+                .mapToObj(i -> new Thread(() -> api.put(key, String.valueOf(i).getBytes())))
+                .peek(Thread::start)
+                .toArray(Thread[]::new);
+        for (Thread thread : threads) {
+            thread.join();
+        }
 
+        Optional<byte[]> bytes = api.get(key);
+        Assert.assertTrue(bytes.isPresent());
+        Assert.assertEquals(String.valueOf(CONCURRENT_THREADS), new String(bytes.get()));
     }
 
     @Test
-    public void concurrentDeleteAndKeys() {
-        //TODO simultanious delete by key and keys listing
+    public void concurrentDeleteAndKeys() throws InterruptedException {
+        fillWithRandomValues(10_000, 30);
+        Thread[] threads = IntStream.range(0, CONCURRENT_THREADS)
+                .mapToObj(i -> new Thread(() -> {
+                    Set<String> keys = api.getKeys("");
+                    while(!keys.isEmpty()) {
+                        keys.stream().findAny().ifPresent(api::delete);
+                        keys = api.getKeys("");
+                    }
+                }))
+                .peek(Thread::start)
+                .toArray(Thread[]::new);
+
+        for (Thread thread : threads) {
+            thread.join();
+        }
     }
 
     @Test
@@ -108,7 +138,7 @@ public class KeyValueApiHttpClientNonFunctionalTest {
         api.action(ZERO_NODE_NAME, NodeAction.DOWN);
         boolean exceptionThrown = false;
         try {
-            Set<String> result = api.getKeys("x");
+            api.getKeys("x");
         } catch (Throwable t) {
             exceptionThrown = true;
         }
@@ -116,14 +146,26 @@ public class KeyValueApiHttpClientNonFunctionalTest {
         Assert.assertTrue(exceptionThrown);
     }
 
-    @Test
-    public void deleteByTombstone() {
-        // TODO use tombstones to mark as deleted (optional)
-    }
+    /**
+     * Moved into FileBasedStorageTest
+     */
+//    @Test
+//    public void deleteByTombstone() {
+//        use tombstones to mark as deleted (optional)
+//    }
 
     @Test
-    public void loadMillionKeys()  {
-        //TODO load too many data (optional)
+    public void loadMillionKeys() {
+        fillWithRandomValues(1_000_000, 40);
+    }
+
+    private void fillWithRandomValues(int count, int valueSize) {
+        java.util.Random random = new java.util.Random();
+        byte[] value = new byte[valueSize];
+        for (int i = 0; i < count; i++) {
+            random.nextBytes(value);
+            api.put(Random.nextKey(), value);
+        }
     }
 }
 
