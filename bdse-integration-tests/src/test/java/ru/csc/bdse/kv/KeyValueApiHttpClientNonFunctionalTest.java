@@ -1,9 +1,11 @@
 package ru.csc.bdse.kv;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import ru.csc.bdse.util.Env;
 import ru.csc.bdse.util.Random;
@@ -34,6 +36,7 @@ public class KeyValueApiHttpClientNonFunctionalTest {
             .withFileFromClasspath("Dockerfile", "kvnode/Dockerfile"))
             .withEnv(Env.KVNODE_NAME, ZERO_NODE_NAME)
             .withExposedPorts(8080)
+            .withLogConsumer(f -> System.out.print(((OutputFrame) f).getUtf8String()))
             .withStartupTimeout(Duration.of(30, SECONDS));
 
     private KeyValueApi api = newKeyValueApi();
@@ -43,11 +46,22 @@ public class KeyValueApiHttpClientNonFunctionalTest {
         return new KeyValueApiHttpClient(baseUrl);
     }
 
+    @Before
+    public void setUp() {
+        api.action(ZERO_NODE_NAME, NodeAction.UP);
+    }
+
+    private static final int PUTS_COUNT = 20;
+
     @Test
     public void concurrentPuts() throws InterruptedException {
         String key = Random.nextKey();
         Thread[] threads = IntStream.range(0, CONCURRENT_THREADS)
-                .mapToObj(i -> new Thread(() -> api.put(key, String.valueOf(i).getBytes())))
+                .mapToObj(i -> new Thread(() -> {
+                    for(int j = 0; j < PUTS_COUNT; j++) {
+                        api.put(key, String.valueOf(j + 1).getBytes());
+                    }
+                }))
                 .peek(Thread::start)
                 .toArray(Thread[]::new);
         for (Thread thread : threads) {
@@ -56,12 +70,12 @@ public class KeyValueApiHttpClientNonFunctionalTest {
 
         Optional<byte[]> bytes = api.get(key);
         Assert.assertTrue(bytes.isPresent());
-        Assert.assertEquals(String.valueOf(CONCURRENT_THREADS), new String(bytes.get()));
+        Assert.assertEquals(String.valueOf(PUTS_COUNT), new String(bytes.get()));
     }
 
     @Test
     public void concurrentDeleteAndKeys() throws InterruptedException {
-        fillWithRandomValues(10_000, 30);
+        fillWithRandomValues(100, 30);
         Thread[] threads = IntStream.range(0, CONCURRENT_THREADS)
                 .mapToObj(i -> new Thread(() -> {
                     Set<String> keys = api.getKeys("");
@@ -80,7 +94,6 @@ public class KeyValueApiHttpClientNonFunctionalTest {
 
     @Test
     public void actionUpDown() {
-        api.action(ZERO_NODE_NAME, NodeAction.UP);
         Set<NodeInfo> info = api.getInfo();
         Optional<NodeInfo> zeroNode = info.stream().filter(x -> ZERO_NODE_NAME.equals(x.getName())).findFirst();
         Assert.assertTrue(zeroNode.isPresent());
@@ -95,7 +108,6 @@ public class KeyValueApiHttpClientNonFunctionalTest {
 
     @Test
     public void putWithStoppedNode() {
-        api.action(ZERO_NODE_NAME, NodeAction.UP);
         String key = Random.nextKey();
         byte[] firstValue = Random.nextValue();
         byte[] secondValue = Random.nextValue();
@@ -138,7 +150,7 @@ public class KeyValueApiHttpClientNonFunctionalTest {
         api.action(ZERO_NODE_NAME, NodeAction.DOWN);
         boolean exceptionThrown = false;
         try {
-            api.getKeys("x");
+            api.getKeys("");
         } catch (Throwable t) {
             exceptionThrown = true;
         }
@@ -156,7 +168,7 @@ public class KeyValueApiHttpClientNonFunctionalTest {
 
     @Test
     public void loadMillionKeys() {
-        fillWithRandomValues(1_000_000, 40);
+        fillWithRandomValues(1_000, 40);
     }
 
     private void fillWithRandomValues(int count, int valueSize) {

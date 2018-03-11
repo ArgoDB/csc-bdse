@@ -1,5 +1,7 @@
 package ru.csc.bdse.kv;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import ru.csc.bdse.util.Require;
 
 import java.util.Objects;
@@ -14,7 +16,8 @@ public class NodeInfo {
     private final String name;
     private final NodeStatus status;
 
-    NodeInfo(String name, NodeStatus status) {
+    @JsonCreator
+    NodeInfo(@JsonProperty("name") String name, @JsonProperty("status") NodeStatus status) {
         Require.nonNull(name, "null name");
         Require.nonNull(status, "null status");
 

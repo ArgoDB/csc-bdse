@@ -16,39 +16,39 @@ public class ConcurrentKeyValueApi implements KeyValueApiEx {
     private final Storage storage;
     private NodeStatus status = NodeStatus.UP;
 
-    ConcurrentKeyValueApi(@NotNull String name, @NotNull Storage storage) {
+    public ConcurrentKeyValueApi(@NotNull String name, @NotNull Storage storage) {
         this.name = name;
         this.storage = storage;
     }
 
     @Override
     public void put(String key, byte[] data) {
-        withWriteLock(() -> storage.put(key, data));
+        withWriteLockIfEnabled(() -> storage.put(key, data));
     }
 
     @Override
     public Optional<byte[]> get(String key) {
-        return Optional.ofNullable(withReadLock(() -> storage.get(key)));
+        return Optional.ofNullable(withReadLockIfEnabled(() -> storage.get(key)));
     }
 
     @Override
     public Optional<byte[]> get(@NotNull String key, boolean includingDeleted) {
-        return Optional.ofNullable(withReadLock(() -> storage.get(key, includingDeleted)));
+        return Optional.ofNullable(withReadLockIfEnabled(() -> storage.get(key, includingDeleted)));
     }
 
     @Override
     public Set<String> getKeys(String prefix) {
-        return withReadLock(() -> storage.matchByPrefix(prefix, false));
+        return withReadLockIfEnabled(() -> storage.matchByPrefix(prefix, false));
     }
 
     @Override
     public void delete(String key) {
-        withWriteLock(() -> storage.delete(key));
+        withWriteLockIfEnabled(() -> storage.delete(key));
     }
 
     @Override
     public Set<NodeInfo> getInfo() {
-        return Collections.singleton(new NodeInfo(name, NodeStatus.UP));
+        return Collections.singleton(withReadLock(() -> new NodeInfo(name, status)));
     }
 
     @Override
@@ -66,10 +66,23 @@ public class ConcurrentKeyValueApi implements KeyValueApiEx {
         }
     }
 
+    private <T> T withReadLockIfEnabled(@NotNull Supplier<T> action) {
+        return withReadLock(() -> {
+            ensureEnabled();
+            return action.get();
+        });
+    }
+
+    private void withWriteLockIfEnabled(@NotNull Runnable runnable) {
+        withWriteLock(() -> {
+            ensureEnabled();
+            runnable.run();
+        });
+    }
+
     private <T> T withReadLock(@NotNull Supplier<T> action) {
         try {
             lock.readLock().lock();
-            ensureEnabled();
             return action.get();
         } finally {
             lock.readLock().unlock();
@@ -79,7 +92,6 @@ public class ConcurrentKeyValueApi implements KeyValueApiEx {
     private void withWriteLock(@NotNull Runnable runnable) {
         try {
             lock.writeLock().lock();
-            ensureEnabled();
             runnable.run();
         } finally {
             lock.writeLock().unlock();
