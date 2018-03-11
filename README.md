@@ -4,9 +4,15 @@
 ## Задания
 [Подготовка](INSTALL.md)
 
+[Часто задаваемые вопросы](FAQ.md)
+
 [Задание 1](TASK1.md)
+
+[Задание 2](TASK2.md)
+
 
 ## Команда (ArgoDB)
 * [Влад Шишов](https://github.com/shishovv)
+
 * [Виталя Бибаев](https://github.com/bibaev)
 
