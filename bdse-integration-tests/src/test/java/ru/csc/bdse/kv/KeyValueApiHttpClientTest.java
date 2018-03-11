@@ -2,6 +2,7 @@ package ru.csc.bdse.kv;
 
 import org.junit.ClassRule;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import ru.csc.bdse.util.Env;
 
@@ -23,6 +24,7 @@ public class KeyValueApiHttpClientTest extends AbstractKeyValueApiTest {
                     .withFileFromClasspath("Dockerfile", "kvnode/Dockerfile"))
             .withEnv(Env.KVNODE_NAME, "node-0")
             .withExposedPorts(8080)
+            .withLogConsumer(f -> System.out.print(((OutputFrame) f).getUtf8String()))
             .withStartupTimeout(Duration.of(30, SECONDS));
 
     @Override

@@ -8,5 +8,18 @@
         <artifactId>bdse</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
+    <dependencies>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.6</version>
+        </dependency>
+
+    </dependencies>
+
+    <properties>
+        <start-class>ru.csc.bdse.Application</start-class>
+    </properties>
+
     <artifactId>bdse-kvnode</artifactId>
 </project>
