@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+option java_outer_classname = "PhoneBookRecordProto";
+option java_package = "ru.csc.bdse.app.proto";
+
+message PhoneBookRecord {
+    required string firstName = 1;
+    required string lastName = 2;
+    optional string nickname = 3;
+    repeated string phoneNumber = 4;
+}
